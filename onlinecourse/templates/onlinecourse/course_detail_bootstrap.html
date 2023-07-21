@@ -55,33 +55,42 @@
         <!-- Use Bootstrap Collapse to hide the exam first, more details could be found here
         https://www.w3schools.com/bootstrap4/bootstrap_collapse.asp -->
 
-        <!-- If the user is authenticated, show the course exam with a list of questions -->
-        {% if user.is_authenticated %}
-            <div id="exam" class="collapse">
-                <!-- For each question in the course -->
-                <form id="questionform" action="{% url 'onlinecourse:submit_exam' %}" method="post">
-                    {% csrf_token %}
-                    {% for question in course.exam.question_set.all %}
-                        <div class="card mt-1">
-                            <div class="card-header"><h5>{{ question.question_text }}</h5></div>
-                            <div class="form-group">
-                                <!-- For each choice in the question -->
-                                {% for choice in question.choice_set.all %}
-                                    <div class="form-check">
-                                        <label class="form-check-label">
-                                            <input type="checkbox" name="choice_{{ choice.id }}"
-                                                   class="form-check-input" id="{{ choice.id }}"
-                                                   value="{{ choice.id }}">{{ choice.choice_text }}
-                                        </label>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                    <input class="btn btn-success btn-block" type="submit" value="Submit">
-                </form>
-            </div>
-        {% endif %}
+       <!-- If the user is authenticated, show the course exam with a list of questions -->
+       {% if user.is_authenticated %}
+       <button class="btn btn-primary mt-3" type="button" data-toggle="collapse" data-target="#exam">
+           Start Exam
+       </button>
+       <div id="exam" class="collapse mt-3">
+           <!-- Add the form tag to wrap the exam questions -->
+           <form id="questionform" action="{% url 'onlinecourse:submit' course.id %}" method="post">
+               {% csrf_token %}
+               <!-- For each lesson in the course -->
+               {% for lesson in course.lesson_set.all %}
+                   <!-- For each question in the lesson -->
+                   {% for question in lesson.question_set.all %}
+                       <div class="card mt-1">
+                           <div class="card-header"><h5>{{ question.question }}</h5></div>
+                           <div class="form-group">
+                               <!-- For each choice in the question -->
+                               {% for choice in question.choice_set.all %}
+                                   <div class="form-check">
+                                       <label class="form-check-label">
+                                           <input type="checkbox" name="choice_{{ choice.id }}"
+                                               class="form-check-input" id="{{ choice.id }}"
+                                               value="{{ choice.id }}">{{ choice.content }}
+                                       </label>
+                                   </div>
+                               {% endfor %}
+                           </div>
+                       </div>
+                   {% endfor %}
+               {% endfor %}
+               <!-- Move the "Submit" button inside the form tag -->
+               <input class="btn btn-success btn-block" type="submit" value="Submit">
+           </form>
+       </div>
+       {% endif %}
+
     </div>
 </body>
 </html>

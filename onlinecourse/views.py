@@ -114,32 +114,36 @@ def submit(request, course_id):
     course = get_object_or_404(Course, pk=course_id)
     user = request.user
 
+    # Retrieve the enrollment object for the user and course
     enrollment = Enrollment.objects.get(user=user, course=course)
 
     if request.method == 'POST':
+        # Process the form submission
         submission = Submission.objects.create(enrollment=enrollment)
-        submitted_answers = extract_answers(request)
 
-        for choice_id in submitted_answers:
+        # Extract the selected choice ids from the exam form
+        selected_choices = extract_answers(request)
+
+        for choice_id in selected_choices:
             choice = get_object_or_404(Choice, pk=choice_id)
             submission.choices.add(choice)
 
-        return HttpResponseRedirect(reverse(viewname='onlinecourse:show_exam_result', args=(course.id, submission.id)))
+        # Redirect to the exam result view with the submission id
+        return HttpResponseRedirect(reverse('onlinecourse:show_exam_result', args=(course.id, submission.id)))
     else:
+        # Render the exam form template
         return render(request, 'onlinecourse/exam_form_bootstrap.html', {'course': course})
-
 
 
 # <HINT> A example method to collect the selected choices from the exam form from the request object
 def extract_answers(request):
-   submitted_anwsers = []
-   for key in request.POST:
-       if key.startswith('choice'):
-           value = request.POST[key]
-           choice_id = int(value)
-           submitted_anwsers.append(choice_id)
-   return submitted_anwsers
-
+    submitted_answers = []
+    for key in request.POST:
+        if key.startswith('choice'):
+            value = request.POST.getlist(key)  # Use getlist() to handle multiple selected choices
+            for choice_id in value:
+                submitted_answers.append(int(choice_id))
+    return submitted_answers
 
 # <HINT> Create an exam result view to check if learner passed exam and show their question results and result for each question,
 # you may implement it based on the following logic:
@@ -154,16 +158,21 @@ def show_exam_result(request, course_id, submission_id):
     selected_choices = submission.choices.all()
 
     total_score = 0
-    for question in course.question_set.all():
-        if question.is_correct(selected_choices):
-            total_score += question.score
+    exam_results = {}  # Create an empty dictionary to store the exam results
+
+    for question in course.lesson_set.all().values_list('question', flat=True):
+        question_obj = get_object_or_404(Question, pk=question)
+        is_correct = question_obj.is_get_score(selected_choices.values_list('id', flat=True))
+        exam_results[question_obj] = is_correct  # Add the question and its correctness to the dictionary
+
+        if is_correct:
+            total_score += question_obj.grade
 
     context = {
         'course': course,
         'submission': submission,
         'total_score': total_score,
+        'exam_results': exam_results,  # Add the exam_results dictionary to the context
     }
 
     return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
-
-
